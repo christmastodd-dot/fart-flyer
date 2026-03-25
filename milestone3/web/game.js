@@ -85,6 +85,10 @@ const LEVELS = [
   { speedBonus: 8.2, label: 'LEGENDARY!'       },  // lv10 pipes 90+
 ];
 
+// ─── PERSISTENT DATA ─────────────────────────────────────────────────────────
+let playerName = localStorage.getItem('fartflyer_name') || '';
+let scores     = JSON.parse(localStorage.getItem('fartflyer_scores') || '[]');
+
 // ─── STATE ───────────────────────────────────────────────────────────────────
 let state;
 
@@ -107,7 +111,7 @@ function makeClouds() {
 
 function resetState() {
   const best         = state ? state.best : parseInt(localStorage.getItem('fartflyer_best') || '0', 10);
-  const selectedChar = state ? state.selectedChar : 1;  // default Ruby
+  const selectedChar = state ? state.selectedChar : 0;
 
   state = {
     phase:         'SELECT',
@@ -122,6 +126,7 @@ function resetState() {
     levelIdx:      0,
     levelUpFrames: 0,
     levelUpLabel:  '',
+    lastScore:     null,
     player:        { x: PLAYER_X, y: LOGICAL_H / 2 - PLAYER_H / 2, vy: 0 },
     pipes:         [],
     powerups:      [],
@@ -202,6 +207,14 @@ function checkCollision() {
 }
 
 // ─── INPUT ───────────────────────────────────────────────────────────────────
+function editName() {
+  const result = prompt('Enter your name (up to 12 chars):', playerName);
+  if (result !== null) {
+    playerName = result.trim().slice(0, 12) || playerName || 'Player';
+    localStorage.setItem('fartflyer_name', playerName);
+  }
+}
+
 function startGame() {
   state.phase     = 'PLAYING';
   state.player.vy = THRUST;
@@ -215,6 +228,11 @@ function onTap(tapX, tapY) {
   SFX.init();
 
   if (state.phase === 'SELECT') {
+    // Name edit zone (below hint text — checked before panelBottom so it takes priority)
+    if (tapY >= 215 && tapY <= 242) {
+      editName();
+      return;
+    }
     const panelBottom = 164;
     if (tapY !== undefined && tapY > panelBottom) {
       startGame();
@@ -353,6 +371,15 @@ function update() {
     if (state.score > state.best) {
       state.best = state.score;
       localStorage.setItem('fartflyer_best', state.best);
+    }
+    // Save to leaderboard
+    const name = playerName || 'Player';
+    state.lastScore = { name, score: state.score };
+    if (state.score > 0) {
+      scores.push({ name, score: state.score });
+      scores.sort((a, b) => b.score - a.score);
+      scores = scores.slice(0, 10);
+      localStorage.setItem('fartflyer_scores', JSON.stringify(scores));
     }
     SFX.death();
     Haptics.heavy();

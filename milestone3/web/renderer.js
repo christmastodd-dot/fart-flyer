@@ -333,50 +333,94 @@ const Renderer = {
     ctx.fillStyle = 'rgba(255,255,255,0.40)';
     ctx.fillText('\u2190\u2192 or tap sides to browse  \u2022  tap center to play', cx, panelY + panelH + 44);
 
+    // Name field (tappable zone y 215-242)
+    const nameFieldY = panelY + panelH + 60;
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.fillRect(cx - 64, nameFieldY - 13, 128, 20);
+    ctx.strokeStyle = 'rgba(255,255,255,0.28)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(cx - 64, nameFieldY - 13, 128, 20);
+    ctx.font      = '11px monospace';
+    ctx.fillStyle = playerName ? '#FFD700' : 'rgba(255,255,255,0.35)';
+    ctx.fillText(playerName ? '\u270f ' + playerName : '\u270f  tap to enter your name', cx, nameFieldY);
+
     if (state.best > 0) {
       ctx.font      = '11px monospace';
-      ctx.fillStyle = 'rgba(255,255,255,0.60)';
+      ctx.fillStyle = 'rgba(255,255,255,0.55)';
       ctx.fillText(`Best: ${state.best}`, cx, LOGICAL_H - 12);
     }
   },
 
   // ── Game over screen ────────────────────────────────────────────────────────
   gameOverScreen() {
-    const cx = LOGICAL_W / 2;
-    const cy = LOGICAL_H / 2;
+    const cx        = LOGICAL_W / 2;
+    const cy        = LOGICAL_H / 2;
     const isNewBest = state.score > 0 && state.score >= state.best;
+    const top5      = scores.slice(0, 5);
 
-    ctx.fillStyle = 'rgba(0,0,0,0.55)';
-    ctx.fillRect(cx - 98, cy - 72, 196, 148);
+    ctx.fillStyle = 'rgba(0,0,0,0.60)';
+    ctx.fillRect(cx - 98, cy - 78, 196, 210);
 
     ctx.textAlign   = 'center';
     ctx.strokeStyle = '#2C3E50';
     ctx.lineWidth   = 3;
 
+    // Header
     ctx.font      = 'bold 26px monospace';
     ctx.fillStyle = '#FF6B6B';
-    ctx.strokeText('GAME OVER', cx, cy - 34);
-    ctx.fillText('GAME OVER',   cx, cy - 34);
+    ctx.strokeText('GAME OVER', cx, cy - 56);
+    ctx.fillText('GAME OVER',   cx, cy - 56);
 
     ctx.lineWidth = 2;
-    ctx.font      = '15px monospace';
+    ctx.font      = '14px monospace';
     ctx.fillStyle = '#FFFFFF';
-    ctx.fillText(`Score: ${state.score}`, cx, cy + 2);
+    ctx.fillText(`Score: ${state.score}`, cx, cy - 36);
 
     ctx.fillStyle = isNewBest ? '#FFD700' : '#FFFFFF';
-    ctx.fillText(`Best:  ${state.best}`, cx, cy + 22);
+    ctx.fillText(`Best:  ${state.best}`,  cx, cy - 20);
 
     if (isNewBest) {
-      ctx.font      = '11px monospace';
+      ctx.font      = '10px monospace';
       ctx.fillStyle = '#FFD700';
-      ctx.fillText('\u2605 NEW BEST! \u2605', cx, cy + 40);
+      ctx.fillText('\u2605 NEW BEST! \u2605', cx, cy - 6);
     }
 
-    const pulse = 0.55 + 0.45 * Math.sin(Date.now() / 250);
+    // Separator
+    const sepY = isNewBest ? cy + 4 : cy - 4;
+    ctx.fillStyle = 'rgba(255,255,255,0.20)';
+    ctx.fillRect(cx - 80, sepY, 160, 1);
+
+    // Leaderboard
+    ctx.font      = '9px monospace';
+    ctx.fillStyle = 'rgba(255,255,255,0.50)';
+    ctx.fillText('TOP SCORES', cx, sepY + 12);
+
+    for (let i = 0; i < top5.length; i++) {
+      const e  = top5[i];
+      const ls = state.lastScore;
+      const hi = ls && i === top5.findIndex(x => x.name === ls.name && x.score === ls.score);
+      const nameStr = e.name.length > 9 ? e.name.slice(0, 8) + '\u2026' : e.name;
+      ctx.fillStyle = hi ? '#FFD700' : (i === 0 ? 'rgba(255,215,0,0.80)' : 'rgba(255,255,255,0.75)');
+      ctx.font      = hi ? 'bold 10px monospace' : '10px monospace';
+      ctx.textAlign = 'left';
+      ctx.fillText(`${i + 1}. ${nameStr}`, cx - 80, sepY + 26 + i * 14);
+      ctx.textAlign = 'right';
+      ctx.fillText(e.score, cx + 80, sepY + 26 + i * 14);
+    }
+    if (top5.length === 0) {
+      ctx.font      = '10px monospace';
+      ctx.fillStyle = 'rgba(255,255,255,0.35)';
+      ctx.textAlign = 'center';
+      ctx.fillText('No scores yet \u2014 be the first!', cx, sepY + 26);
+    }
+
+    // Tap to play again
+    ctx.textAlign   = 'center';
+    const pulse     = 0.55 + 0.45 * Math.sin(Date.now() / 250);
     ctx.globalAlpha = pulse;
-    ctx.font        = '13px monospace';
+    ctx.font        = '12px monospace';
     ctx.fillStyle   = '#FFD700';
-    ctx.fillText('Tap to play again', cx, isNewBest ? cy + 58 : cy + 50);
+    ctx.fillText('Tap to play again', cx, sepY + 103);
     ctx.globalAlpha = 1;
   },
 };

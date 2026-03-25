@@ -332,20 +332,21 @@ const FOGGY_TILTED = [
 
 // ── Character registry ────────────────────────────────────────────────────────
 // color = highlight / border colour shown on the select screen
+// Alphabetical order
 const CHARS = [
-  { name: 'Max',    pal: PAL_MAX,    idle: MAX,   bob2: MAX_BOB2,   tilt: MAX_TILTED,   color: '#3A7D44' },
-  { name: 'Ruby',   pal: PAL,        idle: GIRL,  bob2: GIRL_BOB2,  tilt: GIRL_TILTED,  color: '#E74C3C' },
-  { name: 'Kawai',  pal: PAL_KAWAI,  idle: GIRL,  bob2: GIRL_BOB2,  tilt: GIRL_TILTED,  color: '#9B59B6' },
+  { name: 'Alika',  pal: PAL_ALIKA,  idle: MAX,   bob2: MAX_BOB2,   tilt: MAX_TILTED,   color: '#E91E8C' },
+  { name: 'Conner', pal: PAL_CONNER, idle: MAX,   bob2: MAX_BOB2,   tilt: MAX_TILTED,   color: '#C0392B' },
   { name: 'Dylan',  pal: PAL_DYLAN,  idle: MAX,   bob2: MAX_BOB2,   tilt: MAX_TILTED,   color: '#2980B9' },
   { name: 'Emily',  pal: PAL_EMILY,  idle: GIRL,  bob2: GIRL_BOB2,  tilt: GIRL_TILTED,  color: '#16A085' },
-  { name: 'Ricki',  pal: PAL_RICKI,  idle: PONY,  bob2: PONY_BOB2,  tilt: PONY_TILTED,  color: '#E67E22' },
-  { name: 'Foggy',  pal: PAL_FOGGY,  idle: FOGGY, bob2: FOGGY_BOB2, tilt: FOGGY_TILTED, color: '#8E44AD' },
-  { name: 'Conner', pal: PAL_CONNER, idle: MAX,   bob2: MAX_BOB2,   tilt: MAX_TILTED,   color: '#C0392B' },
-  { name: 'Mason',  pal: PAL_MASON,  idle: MAX,   bob2: MAX_BOB2,   tilt: MAX_TILTED,   color: '#F39C12' },
-  { name: 'Alika',  pal: PAL_ALIKA,  idle: MAX,   bob2: MAX_BOB2,   tilt: MAX_TILTED,   color: '#E91E8C' },
-  { name: 'Tai',    pal: PAL_TAI,    idle: MAX,   bob2: MAX_BOB2,   tilt: MAX_TILTED,   color: '#00ACC1' },
   { name: 'Finlay', pal: PAL_FINLAY, idle: GIRL,  bob2: GIRL_BOB2,  tilt: GIRL_TILTED,  color: '#388E3C' },
+  { name: 'Foggy',  pal: PAL_FOGGY,  idle: FOGGY, bob2: FOGGY_BOB2, tilt: FOGGY_TILTED, color: '#8E44AD' },
+  { name: 'Kawai',  pal: PAL_KAWAI,  idle: GIRL,  bob2: GIRL_BOB2,  tilt: GIRL_TILTED,  color: '#9B59B6' },
   { name: 'Levi',   pal: PAL_LEVI,   idle: MAX,   bob2: MAX_BOB2,   tilt: MAX_TILTED,   color: '#FF5722' },
+  { name: 'Mason',  pal: PAL_MASON,  idle: MAX,   bob2: MAX_BOB2,   tilt: MAX_TILTED,   color: '#F39C12' },
+  { name: 'Max',    pal: PAL_MAX,    idle: MAX,   bob2: MAX_BOB2,   tilt: MAX_TILTED,   color: '#3A7D44' },
+  { name: 'Ricki',  pal: PAL_RICKI,  idle: PONY,  bob2: PONY_BOB2,  tilt: PONY_TILTED,  color: '#E67E22' },
+  { name: 'Ruby',   pal: PAL,        idle: GIRL,  bob2: GIRL_BOB2,  tilt: GIRL_TILTED,  color: '#E74C3C' },
+  { name: 'Tai',    pal: PAL_TAI,    idle: MAX,   bob2: MAX_BOB2,   tilt: MAX_TILTED,   color: '#00ACC1' },
 ];
 
 // ── Sprite renderer ───────────────────────────────────────────────────────────
