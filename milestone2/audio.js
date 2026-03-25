@@ -4,12 +4,25 @@ const SFX = {
   _ctx: null,
 
   init() {
-    if (this._ctx) return;
+    if (this._ctx) {
+      // iOS suspends the context between taps — always try to resume
+      if (this._ctx.state === 'suspended') this._ctx.resume();
+      return;
+    }
     try {
       this._ctx = new (window.AudioContext || window.webkitAudioContext)();
     } catch (e) {
       console.warn('Web Audio API not available');
+      return;
     }
+    // iOS requires resume() AND a silent buffer played synchronously inside
+    // the user-gesture handler to fully unlock the audio pipeline.
+    this._ctx.resume();
+    const buf = this._ctx.createBuffer(1, 1, 22050);
+    const src = this._ctx.createBufferSource();
+    src.buffer = buf;
+    src.connect(this._ctx.destination);
+    src.start(0);
   },
 
   _resume() {

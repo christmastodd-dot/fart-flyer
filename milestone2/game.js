@@ -6,14 +6,28 @@ const ctx    = canvas.getContext('2d');
 
 const LOGICAL_W = 320;
 const LOGICAL_H = 480;
-const SCALE     = Math.min(
-  Math.floor(window.innerWidth  / LOGICAL_W),
-  Math.floor(window.innerHeight / LOGICAL_H)
-) || 1;
 
-canvas.width  = LOGICAL_W * SCALE;
-canvas.height = LOGICAL_H * SCALE;
-ctx.scale(SCALE, SCALE);
+canvas.width  = LOGICAL_W;
+canvas.height = LOGICAL_H;
+
+function resizeCanvas() {
+  const availW = document.body.clientWidth  || window.innerWidth;
+  const availH = document.body.clientHeight || window.innerHeight;
+  const scale  = Math.min(availW / LOGICAL_W, availH / LOGICAL_H);
+  canvas.style.width  = Math.floor(LOGICAL_W * scale) + 'px';
+  canvas.style.height = Math.floor(LOGICAL_H * scale) + 'px';
+}
+resizeCanvas();
+window.addEventListener('resize',            resizeCanvas);
+window.addEventListener('orientationchange', resizeCanvas);
+
+function toLogical(clientX, clientY) {
+  const rect = canvas.getBoundingClientRect();
+  return [
+    (clientX - rect.left) * (LOGICAL_W / rect.width),
+    (clientY - rect.top)  * (LOGICAL_H / rect.height),
+  ];
+}
 
 // ─── CONSTANTS ───────────────────────────────────────────────────────────────
 const GRAVITY         = 0.38;
@@ -186,16 +200,11 @@ function onTap(tapX, tapY) {
 }
 
 canvas.addEventListener('click', e => {
-  const rect = canvas.getBoundingClientRect();
-  onTap((e.clientX - rect.left) / SCALE, (e.clientY - rect.top) / SCALE);
+  onTap(...toLogical(e.clientX, e.clientY));
 });
 canvas.addEventListener('touchstart', e => {
   e.preventDefault();
-  const rect = canvas.getBoundingClientRect();
-  onTap(
-    (e.touches[0].clientX - rect.left) / SCALE,
-    (e.touches[0].clientY - rect.top)  / SCALE
-  );
+  onTap(...toLogical(e.touches[0].clientX, e.touches[0].clientY));
 }, { passive: false });
 document.addEventListener('keydown', e => {
   if (state.phase === 'SELECT') {
@@ -322,8 +331,12 @@ function render() {
 
 // ─── MAIN LOOP ───────────────────────────────────────────────────────────────
 function loop() {
-  update();
-  render();
+  try {
+    update();
+    render();
+  } catch (e) {
+    console.error('[FartFlyer]', e);
+  }
   requestAnimationFrame(loop);
 }
 requestAnimationFrame(loop);
