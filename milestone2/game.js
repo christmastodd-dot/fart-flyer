@@ -1,5 +1,19 @@
 // game.js — canvas setup, constants, game state, physics, input, main loop
 
+// ─── AUDIO UNLOCK ────────────────────────────────────────────────────────────
+(function () {
+  function onFirstTouch() {
+    SFX.unlock();
+    document.removeEventListener('touchstart', onFirstTouch, true);
+    document.removeEventListener('mousedown',  onFirstTouch, true);
+  }
+  document.addEventListener('touchstart', onFirstTouch, { capture: true, passive: true });
+  document.addEventListener('mousedown',  onFirstTouch, { capture: true, passive: true });
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && SFX._ctx) SFX._ctx.resume();
+  });
+})();
+
 // ─── CANVAS ──────────────────────────────────────────────────────────────────
 const canvas = document.getElementById('game');
 const ctx    = canvas.getContext('2d');

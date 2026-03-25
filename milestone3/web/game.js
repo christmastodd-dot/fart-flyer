@@ -1,5 +1,24 @@
 // game.js — M3: LEVELS, LEVELUP phase, per-pipe gap, haptic feedback, flame power-ups
 
+// ─── AUDIO UNLOCK ────────────────────────────────────────────────────────────
+// Fires on the very first touch anywhere on the page — capture phase so it
+// runs before any other handler. This is the earliest possible user-gesture
+// moment and guarantees SFX.unlock() is always called synchronously.
+(function () {
+  function onFirstTouch() {
+    SFX.unlock();
+    document.removeEventListener('touchstart', onFirstTouch, true);
+    document.removeEventListener('mousedown',  onFirstTouch, true);
+  }
+  document.addEventListener('touchstart', onFirstTouch, { capture: true, passive: true });
+  document.addEventListener('mousedown',  onFirstTouch, { capture: true, passive: true });
+
+  // Resume after phone lock / tab switch / app interruption
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && SFX._ctx) SFX._ctx.resume();
+  });
+})();
+
 // ─── CANVAS ──────────────────────────────────────────────────────────────────
 const canvas = document.getElementById('game');
 const ctx    = canvas.getContext('2d');
