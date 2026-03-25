@@ -1,6 +1,6 @@
-// renderer.js — all canvas draw calls
+// renderer.js — all canvas draw calls (M3: adds levelUpScreen + levelIndicator)
 // Globals from game.js:  ctx, LOGICAL_W, LOGICAL_H, GROUND_H,
-//                        PIPE_W, PIPE_GAP, PLAYER_W, PLAYER_H, state
+//                        PIPE_W, PLAYER_W, PLAYER_H, LEVELS, state
 // Globals from sprites.js: PAL, CHARS, drawSprite
 
 const Renderer = {
@@ -49,6 +49,7 @@ const Renderer = {
     }
   },
 
+  // Pipe reads p.gap (stored per-pipe) instead of a global constant
   pipe(p) {
     const capH   = 10;
     const capW   = PIPE_W + 6;
@@ -64,7 +65,7 @@ const Renderer = {
     ctx.fillStyle = '#27AE60';
     ctx.fillRect(p.x + capOff + 2, p.gapTop - capH, 5, capH);
 
-    const botY = p.gapTop + PIPE_GAP;
+    const botY = p.gapTop + p.gap;
     ctx.fillStyle = '#2ECC40';
     ctx.fillRect(p.x + capOff, botY, capW, capH);
     ctx.fillStyle = '#27AE60';
@@ -181,6 +182,15 @@ const Renderer = {
     ctx.fillText(state.score, LOGICAL_W / 2, 38);
   },
 
+  // Small level badge in top-right during play
+  levelIndicator() {
+    if (state.levelIdx === 0) return;
+    ctx.textAlign = 'right';
+    ctx.font      = '11px monospace';
+    ctx.fillStyle = 'rgba(255,255,255,0.72)';
+    ctx.fillText(`LV${state.levelIdx + 1}`, LOGICAL_W - 6, 18);
+  },
+
   flash() {
     if (state.flashFrames > 0) {
       ctx.fillStyle = 'rgba(255,70,70,0.38)';
@@ -188,15 +198,70 @@ const Renderer = {
     }
   },
 
-  // ── Character select / title screen ───────────────────────────────────────
-  selectScreen() {
+  // ── Level-up overlay ────────────────────────────────────────────────────────
+  levelUpScreen() {
+    const total   = 90;
+    const elapsed = total - state.levelUpFrames;
     const cx = LOGICAL_W / 2;
+    const cy = LOGICAL_H / 2;
 
-    // Dim overlay over the scrolling background
+    const overlayAlpha = Math.min(1, elapsed / 12) * 0.62;
+    ctx.fillStyle = `rgba(0,0,0,${overlayAlpha})`;
+    ctx.fillRect(0, 0, LOGICAL_W, LOGICAL_H);
+
+    const scaleIn = elapsed < 14 ? elapsed / 14 : 1;
+    const fadeOut = state.levelUpFrames < 18 ? state.levelUpFrames / 18 : 1;
+    ctx.save();
+    ctx.globalAlpha = fadeOut;
+    ctx.translate(cx, cy);
+    ctx.scale(scaleIn, scaleIn);
+    ctx.textAlign = 'center';
+
+    ctx.strokeStyle = '#FFD700';
+    ctx.lineWidth   = 2;
+    ctx.globalAlpha = fadeOut * 0.35;
+    ctx.beginPath();
+    ctx.arc(0, 0, 52, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.globalAlpha = fadeOut;
+
+    ctx.font        = 'bold 28px monospace';
+    ctx.strokeStyle = '#2C3E50';
+    ctx.lineWidth   = 3;
+    ctx.strokeText('LEVEL UP!', 0, -18);
+    ctx.fillStyle = '#FFD700';
+    ctx.fillText('LEVEL UP!', 0, -18);
+
+    ctx.font      = 'bold 18px monospace';
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillText(`Level ${state.levelIdx + 1}`, 0, 8);
+
+    if (state.levelUpLabel) {
+      ctx.font      = '13px monospace';
+      ctx.fillStyle = '#FF9F43';
+      ctx.fillText(state.levelUpLabel, 0, 28);
+    }
+
+    const barW    = 100;
+    const barFill = (state.levelUpFrames / total) * barW;
+    ctx.fillStyle = 'rgba(255,255,255,0.2)';
+    ctx.fillRect(-barW / 2, 46, barW, 5);
+    ctx.fillStyle = '#FFD700';
+    ctx.fillRect(-barW / 2, 46, barFill, 5);
+
+    ctx.restore();
+  },
+
+  // ── Character select / title screen (carousel — prev · sel · next) ──────────
+  selectScreen() {
+    const cx  = LOGICAL_W / 2;
+    const sel = state.selectedChar;
+    const n   = CHARS.length;
+
     ctx.fillStyle = 'rgba(0,0,0,0.30)';
     ctx.fillRect(0, 0, LOGICAL_W, LOGICAL_H);
 
-    // "FART FLYER" title
+    // Title
     const pulse = 0.85 + 0.15 * Math.sin(Date.now() / 450);
     ctx.globalAlpha = pulse;
     ctx.textAlign   = 'center';
@@ -212,53 +277,62 @@ const Renderer = {
     ctx.fillStyle = 'rgba(255,255,255,0.80)';
     ctx.fillText('Choose your flyer!', cx, 70);
 
-    // Three character panels — 88 px wide, 12 px gap
-    const panelW = 88, panelH = 82;
-    const panelY = 82;
+    // Three panels: [prev, selected, next]
+    const panelW  = 88, panelH = 82, panelY = 82;
     const panelXs = [12, 116, 220];
-    const sel = state.selectedChar;
+    const shown   = [(sel - 1 + n) % n, sel, (sel + 1) % n];
 
-    for (let i = 0; i < CHARS.length; i++) {
-      const ch  = CHARS[i];
-      const px  = panelXs[i];
-      const isSel = (i === sel);
+    for (let i = 0; i < 3; i++) {
+      const cidx  = shown[i];
+      const ch    = CHARS[cidx];
+      const px    = panelXs[i];
+      const isSel = (i === 1);
 
-      // Panel background
-      ctx.fillStyle = isSel ? 'rgba(255,255,200,0.16)' : 'rgba(0,0,0,0.40)';
+      ctx.globalAlpha = isSel ? 1 : 0.55;
+
+      ctx.fillStyle   = isSel ? 'rgba(255,255,200,0.16)' : 'rgba(0,0,0,0.40)';
       ctx.fillRect(px, panelY, panelW, panelH);
 
-      // Border
       ctx.strokeStyle = isSel ? ch.color : 'rgba(255,255,255,0.22)';
       ctx.lineWidth   = isSel ? 2.5 : 1;
       ctx.strokeRect(px + 0.5, panelY + 0.5, panelW - 1, panelH - 1);
 
-      // Portrait centred in panel, drawn at pixel-size 3 (30×42 px)
+      // Portrait centred, pixel-size 3
       const sprX = px + Math.floor((panelW - 30) / 2);
-      const sprY = panelY + 6;
-      drawSprite(ch.idle, sprX, sprY, 3, ch.pal);
+      drawSprite(ch.idle, sprX, panelY + 6, 3, ch.pal);
 
-      // Character name
       ctx.textAlign = 'center';
       ctx.font      = isSel ? 'bold 11px monospace' : '11px monospace';
       ctx.fillStyle = isSel ? ch.color : 'rgba(255,255,255,0.70)';
       ctx.fillText(ch.name, px + panelW / 2, panelY + panelH - 6);
-    }
 
-    // "Play as X!" pulsing call-to-action
+      // Arrow hint on side panels
+      if (!isSel) {
+        ctx.fillStyle = 'rgba(255,255,255,0.45)';
+        ctx.font      = 'bold 13px monospace';
+        ctx.fillText(i === 0 ? '\u25C4' : '\u25BA', px + panelW / 2, panelY + panelH / 2 - 4);
+      }
+    }
+    ctx.globalAlpha = 1;
+
+    // Counter: "3 / 13"
+    ctx.textAlign = 'center';
+    ctx.font      = '10px monospace';
+    ctx.fillStyle = 'rgba(255,255,255,0.45)';
+    ctx.fillText(`${sel + 1} / ${n}`, cx, panelY + panelH + 14);
+
+    // Play button
     const btn = 0.55 + 0.45 * Math.sin(Date.now() / 280);
     ctx.globalAlpha = btn;
     ctx.font        = 'bold 14px monospace';
     ctx.fillStyle   = '#FFD700';
-    ctx.textAlign   = 'center';
-    ctx.fillText(`\u25B6  Play as ${CHARS[sel].name}!  \u25C0`, cx, panelY + panelH + 26);
+    ctx.fillText(`\u25B6  Play as ${CHARS[sel].name}!`, cx, panelY + panelH + 28);
     ctx.globalAlpha = 1;
 
-    // ← → hint
     ctx.font      = '10px monospace';
-    ctx.fillStyle = 'rgba(255,255,255,0.45)';
-    ctx.fillText('\u2190\u2192 keys to switch  \u2022  tap to pick & play', cx, panelY + panelH + 44);
+    ctx.fillStyle = 'rgba(255,255,255,0.40)';
+    ctx.fillText('\u2190\u2192 or tap sides to browse  \u2022  tap center to play', cx, panelY + panelH + 44);
 
-    // Best score
     if (state.best > 0) {
       ctx.font      = '11px monospace';
       ctx.fillStyle = 'rgba(255,255,255,0.60)';

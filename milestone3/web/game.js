@@ -220,12 +220,13 @@ function onTap(tapX, tapY) {
       startGame();
       return;
     }
+    // Carousel: left third = prev, center = play, right third = next
     const third  = LOGICAL_W / 3;
-    const tapped = tapX < third ? 0 : tapX < third * 2 ? 1 : 2;
-    if (tapped === state.selectedChar) {
+    const region = tapX < third ? -1 : tapX < third * 2 ? 0 : 1;
+    if (region === 0) {
       startGame();
     } else {
-      state.selectedChar = tapped;
+      state.selectedChar = ((state.selectedChar + region) % CHARS.length + CHARS.length) % CHARS.length;
     }
     return;
   }
@@ -253,7 +254,7 @@ canvas.addEventListener('touchstart', e => {
 }, { passive: false });
 document.addEventListener('keydown', e => {
   if (state.phase === 'SELECT') {
-    if (e.code === 'ArrowLeft')  { e.preventDefault(); state.selectedChar = (state.selectedChar + 2) % CHARS.length; return; }
+    if (e.code === 'ArrowLeft')  { e.preventDefault(); state.selectedChar = (state.selectedChar - 1 + CHARS.length) % CHARS.length; return; }
     if (e.code === 'ArrowRight') { e.preventDefault(); state.selectedChar = (state.selectedChar + 1) % CHARS.length; return; }
     if (e.code === 'Space' || e.code === 'ArrowUp') { e.preventDefault(); SFX.init(); startGame(); return; }
   }

@@ -252,13 +252,16 @@ const Renderer = {
     ctx.restore();
   },
 
-  // ── Character select / title screen ───────────────────────────────────────
+  // ── Character select / title screen (carousel — prev · sel · next) ──────────
   selectScreen() {
-    const cx = LOGICAL_W / 2;
+    const cx  = LOGICAL_W / 2;
+    const sel = state.selectedChar;
+    const n   = CHARS.length;
 
     ctx.fillStyle = 'rgba(0,0,0,0.30)';
     ctx.fillRect(0, 0, LOGICAL_W, LOGICAL_H);
 
+    // Title
     const pulse = 0.85 + 0.15 * Math.sin(Date.now() / 450);
     ctx.globalAlpha = pulse;
     ctx.textAlign   = 'center';
@@ -274,17 +277,20 @@ const Renderer = {
     ctx.fillStyle = 'rgba(255,255,255,0.80)';
     ctx.fillText('Choose your flyer!', cx, 70);
 
-    const panelW = 88, panelH = 82;
-    const panelY = 82;
+    // Three panels: [prev, selected, next]
+    const panelW  = 88, panelH = 82, panelY = 82;
     const panelXs = [12, 116, 220];
-    const sel = state.selectedChar;
+    const shown   = [(sel - 1 + n) % n, sel, (sel + 1) % n];
 
-    for (let i = 0; i < CHARS.length; i++) {
-      const ch  = CHARS[i];
-      const px  = panelXs[i];
-      const isSel = (i === sel);
+    for (let i = 0; i < 3; i++) {
+      const cidx  = shown[i];
+      const ch    = CHARS[cidx];
+      const px    = panelXs[i];
+      const isSel = (i === 1);
 
-      ctx.fillStyle = isSel ? 'rgba(255,255,200,0.16)' : 'rgba(0,0,0,0.40)';
+      ctx.globalAlpha = isSel ? 1 : 0.55;
+
+      ctx.fillStyle   = isSel ? 'rgba(255,255,200,0.16)' : 'rgba(0,0,0,0.40)';
       ctx.fillRect(px, panelY, panelW, panelH);
 
       ctx.strokeStyle = isSel ? ch.color : 'rgba(255,255,255,0.22)';
@@ -293,26 +299,39 @@ const Renderer = {
 
       // Portrait centred, pixel-size 3
       const sprX = px + Math.floor((panelW - 30) / 2);
-      const sprY = panelY + 6;
-      drawSprite(ch.idle, sprX, sprY, 3, ch.pal);
+      drawSprite(ch.idle, sprX, panelY + 6, 3, ch.pal);
 
       ctx.textAlign = 'center';
       ctx.font      = isSel ? 'bold 11px monospace' : '11px monospace';
       ctx.fillStyle = isSel ? ch.color : 'rgba(255,255,255,0.70)';
       ctx.fillText(ch.name, px + panelW / 2, panelY + panelH - 6);
-    }
 
+      // Arrow hint on side panels
+      if (!isSel) {
+        ctx.fillStyle = 'rgba(255,255,255,0.45)';
+        ctx.font      = 'bold 13px monospace';
+        ctx.fillText(i === 0 ? '\u25C4' : '\u25BA', px + panelW / 2, panelY + panelH / 2 - 4);
+      }
+    }
+    ctx.globalAlpha = 1;
+
+    // Counter: "3 / 13"
+    ctx.textAlign = 'center';
+    ctx.font      = '10px monospace';
+    ctx.fillStyle = 'rgba(255,255,255,0.45)';
+    ctx.fillText(`${sel + 1} / ${n}`, cx, panelY + panelH + 14);
+
+    // Play button
     const btn = 0.55 + 0.45 * Math.sin(Date.now() / 280);
     ctx.globalAlpha = btn;
     ctx.font        = 'bold 14px monospace';
     ctx.fillStyle   = '#FFD700';
-    ctx.textAlign   = 'center';
-    ctx.fillText(`\u25B6  Play as ${CHARS[sel].name}!  \u25C0`, cx, panelY + panelH + 26);
+    ctx.fillText(`\u25B6  Play as ${CHARS[sel].name}!`, cx, panelY + panelH + 28);
     ctx.globalAlpha = 1;
 
     ctx.font      = '10px monospace';
-    ctx.fillStyle = 'rgba(255,255,255,0.45)';
-    ctx.fillText('\u2190\u2192 keys to switch  \u2022  tap to pick & play', cx, panelY + panelH + 44);
+    ctx.fillStyle = 'rgba(255,255,255,0.40)';
+    ctx.fillText('\u2190\u2192 or tap sides to browse  \u2022  tap center to play', cx, panelY + panelH + 44);
 
     if (state.best > 0) {
       ctx.font      = '11px monospace';
