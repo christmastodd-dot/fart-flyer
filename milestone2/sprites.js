@@ -103,10 +103,10 @@ const PAL_TAI = [
   '#6A1B9A', '#4A1272', '#FFFFFF', '#2C3E50', '#4A2808', '#2A1808', '#DDB882',
 ];
 
-// ── Finlay (tan, medium-brown hair, forest-green shirt, brown pants) ──────────
+// ── Finlay (tan, medium-brown hair, forest-green shirt, brown skirt) ─────────
 const PAL_FINLAY = [
   null, '#6B3A1F', '#C8906A', '#A86A3A', '#388E3C', '#2E7D32',
-  '#795548', '#5D4037', '#FFFFFF', '#2C3E50', '#4A2808', '#8B5A2F', '#C8906A',
+  '#795548', '#5D4037', '#FFFFFF', '#2C3E50', '#4A2808', '#8B5A2F', '#FFB6C1',
 ];
 
 // ── Levi (tan, light-brown hair, orange-red shirt, blue jeans) ────────────────
@@ -224,15 +224,16 @@ const MAX_TILTED = [
   [ 0,10,10,10, 0, 0,10,10, 0, 0],
 ];
 
-// ── Ponytail sprites (Ricki — short-gathered top, single strand right side) ───
+// ── Ponytail sprites (Ricki — gathered top, 2-wide pony hanging right side) ───
+// Face is narrowed to cols 1-6 so cols 7 is a gap and cols 8-9 are the pony.
 const PONY = [
   [ 0, 0, 1, 1, 1, 1, 1, 0, 0, 0],
   [ 0, 1, 1,11, 1,11, 1, 1, 0, 0],
-  [ 0, 1, 1, 1, 1, 1, 1, 1, 1, 0],  // hair extends to col 8 = pony start
-  [ 0, 2, 2, 2, 2, 2, 2, 2, 1, 0],  // face + pony strand col 8
-  [ 0, 2, 9, 2,12, 2, 9, 2, 1, 0],  // eyes + blush + pony
-  [ 0, 2, 2, 2, 2, 2, 2, 2, 1, 0],  // face + pony end
-  [ 0, 3, 2, 2, 2, 2, 2, 3, 0, 0],
+  [ 0, 1, 1, 1, 1, 1, 1, 1, 1, 1],  // hair sweeps all the way right — pony root
+  [ 0, 2, 2, 2, 2, 2, 2, 0, 1, 1],  // face cols 1-6, gap col 7, pony 2-wide
+  [ 0, 2, 9, 2,12, 2, 9, 0, 1, 1],  // eyes + blush, gap, pony
+  [ 0, 2, 2, 2, 2, 2, 2, 0,11, 1],  // face, gap, pony highlight on near edge
+  [ 0, 3, 2, 2, 2, 2, 3, 0, 1, 1],  // chin shadow at col 6, pony continues
   [ 0, 4, 4, 4, 4, 4, 4, 4, 0, 0],
   [ 0, 5, 4, 4, 4, 4, 4, 5, 0, 0],
   [ 0, 5, 4, 4, 4, 4, 4, 5, 0, 0],
@@ -245,11 +246,11 @@ const PONY = [
 const PONY_BOB2 = [
   [ 0, 0, 1, 1, 1, 1, 1, 0, 0, 0],
   [ 0, 1, 1,11, 1,11, 1, 1, 0, 0],
-  [ 0, 1, 1, 1, 1, 1, 1, 1, 1, 0],
-  [ 0, 2, 2, 2, 2, 2, 2, 2, 1, 0],
-  [ 0, 2, 9, 2,12, 2, 9, 2, 1, 0],
-  [ 0, 2, 2, 2, 2, 2, 2, 2, 1, 0],
-  [ 0, 3, 2, 2, 2, 2, 2, 3, 0, 0],
+  [ 0, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+  [ 0, 2, 2, 2, 2, 2, 2, 0, 1, 1],
+  [ 0, 2, 9, 2,12, 2, 9, 0, 1, 1],
+  [ 0, 2, 2, 2, 2, 2, 2, 0,11, 1],
+  [ 0, 3, 2, 2, 2, 2, 3, 0, 1, 1],
   [ 0, 4, 4, 4, 4, 4, 4, 4, 0, 0],
   [ 0, 5, 4, 4, 4, 4, 4, 5, 0, 0],
   [ 0, 5, 4, 4, 4, 4, 4, 5, 0, 0],
@@ -259,14 +260,15 @@ const PONY_BOB2 = [
   [ 0,10,10,10, 0,10,10,10, 0, 0],
 ];
 
+// Tilted: body shifts 1 col right; pony at col 9 (1 wide — body occupies col 8)
 const PONY_TILTED = [
   [ 0, 0, 0, 1, 1, 1, 1, 1, 0, 0],
   [ 0, 0, 1, 1,11, 1,11, 1, 1, 0],
-  [ 0, 0, 1, 1, 1, 1, 1, 1, 1, 1],  // hair shifted right + pony col 9
-  [ 0, 0, 2, 2, 2, 2, 2, 2, 0, 1],  // face cols 2-7, gap col 8, pony col 9
-  [ 0, 0, 2, 9, 2,12, 2, 9, 2, 1],  // eyes (face wider), pony col 9
-  [ 0, 0, 2, 2, 2, 2, 2, 2, 0, 1],  // face, gap, pony
-  [ 0, 0, 3, 2, 2, 2, 2, 2, 3, 0],
+  [ 0, 0, 1, 1, 1, 1, 1, 1, 1, 1],  // hair + pony root at col 9
+  [ 0, 0, 2, 2, 2, 2, 2, 0, 1, 1],  // face cols 2-6, gap col 7, pony cols 8-9
+  [ 0, 0, 2, 9, 2,12, 2, 9, 1, 1],  // eyes + pony 2 wide
+  [ 0, 0, 2, 2, 2, 2, 2, 0,11, 1],  // face, gap, pony
+  [ 0, 0, 3, 2, 2, 2, 2, 3, 0, 0],
   [ 0, 0, 4, 4, 4, 4, 4, 4, 4, 0],
   [ 0, 0, 5, 4, 4, 4, 4, 4, 5, 0],
   [ 0, 0, 5, 4, 4, 4, 4, 4, 5, 0],
@@ -342,7 +344,7 @@ const CHARS = [
   { name: 'Mason',  pal: PAL_MASON,  idle: MAX,   bob2: MAX_BOB2,   tilt: MAX_TILTED,   color: '#F39C12' },
   { name: 'Alika',  pal: PAL_ALIKA,  idle: MAX,   bob2: MAX_BOB2,   tilt: MAX_TILTED,   color: '#E91E8C' },
   { name: 'Tai',    pal: PAL_TAI,    idle: MAX,   bob2: MAX_BOB2,   tilt: MAX_TILTED,   color: '#00ACC1' },
-  { name: 'Finlay', pal: PAL_FINLAY, idle: MAX,   bob2: MAX_BOB2,   tilt: MAX_TILTED,   color: '#388E3C' },
+  { name: 'Finlay', pal: PAL_FINLAY, idle: GIRL,  bob2: GIRL_BOB2,  tilt: GIRL_TILTED,  color: '#388E3C' },
   { name: 'Levi',   pal: PAL_LEVI,   idle: MAX,   bob2: MAX_BOB2,   tilt: MAX_TILTED,   color: '#FF5722' },
 ];
 
