@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: fart-flyer
+    env: static
+    staticPublishPath: ./milestone3/web
+    pullRequestPreviewsEnabled: false
+    headers:
+      - path: /*
+        name: Cache-Control
+        value: no-cache, no-store, must-revalidate

@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>Fart Flyer</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #1a1a2e;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      overflow: hidden;
+    }
+    canvas {
+      display: block;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+    }
+  </style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<script>
+// ─── CANVAS SETUP ───────────────────────────────────────────────────────────
+const canvas = document.getElementById('game');
+const ctx    = canvas.getContext('2d');
+
+const LOGICAL_W = 320;
+const LOGICAL_H = 480;
+const SCALE     = Math.min(
+  Math.floor(window.innerWidth  / LOGICAL_W),
+  Math.floor(window.innerHeight / LOGICAL_H)
+) || 1;
+
+canvas.width  = LOGICAL_W * SCALE;
+canvas.height = LOGICAL_H * SCALE;
+ctx.scale(SCALE, SCALE);
+
+// ─── CONSTANTS ───────────────────────────────────────────────────────────────
+const GRAVITY       = 0.38;
+const THRUST        = -4.68;
+const PIPE_SPEED    = 2.2;
+const PIPE_GAP      = 120;
+const PIPE_INTERVAL = 95;   // frames between spawns
+const PIPE_W        = 44;
+const GROUND_H      = 40;
+const PLAYER_X      = 68;
+const PLAYER_W      = 20;
+const PLAYER_H      = 28;
+const HIT_SHRINK    = 3;    // hitbox forgiveness (px each side)
+
+// ─── PIXEL ART SPRITES ───────────────────────────────────────────────────────
+// Each row is an array of palette indices. 0 = transparent.
+// Girl sprite: 10 wide × 14 tall logical pixels, drawn at 2× scale = 20×28
+const PALETTE = {
+  1: '#F4C430', // golden blonde hair
+  2: '#FAD7A0', // skin
+  3: '#E8A87C', // skin shadow
+  4: '#4A90D9', // blue shirt
+  5: '#2C6EAB', // shirt shadow
+  6: '#E74C3C', // red skirt
+  7: '#C0392B', // skirt shadow
+  8: '#FFFFFF', // white
+  9: '#2C3E50', // dark (eyes, outline)
+  A: '#8B4513', // shoe brown
+  B: '#F9E4B7', // hair highlight
+  C: '#FFB6C1', // cheek blush
+};
+
+const GIRL = [
+  [0,1,1,1,1,1,1,1,0,0],
+  [1,1,B,1,1,1,B,1,1,0],
+  [0,1,1,1,1,1,1,1,1,0],
+  [0,2,2,2,2,2,2,2,0,0],
+  [0,2,9,2,C,2,9,2,0,0],
+  [0,2,2,2,2,2,2,2,0,0],
+  [0,3,2,2,2,2,2,3,0,0],
+  [0,4,4,4,4,4,4,4,0,0],
+  [0,5,4,4,4,4,4,5,0,0],
+  [0,5,4,4,4,4,4,5,0,0],
+  [0,6,6,6,6,6,6,6,0,0],
+  [0,7,6,6,6,6,6,7,0,0],
+  [0,A,A,0,0,A,A,0,0,0],
+  [A,A,A,0,0,A,A,A,0,0],
+];
+
+// Reference palette keys as actual strings for lookup
+const PAL = {
+  1:'#F4C430', 2:'#FAD7A0', 3:'#E8A87C',
+  4:'#4A90D9', 5:'#2C6EAB', 6:'#E74C3C',
+  7:'#C0392B', 8:'#FFFFFF', 9:'#2C3E50',
+  A:'#8B4513', B:'#F9E4B7', C:'#FFB6C1',
+};
+
+const GIRL_TILTED = [   // tilt up slightly on fart (shift hair row)
+  [0,0,1,1,1,1,1,1,1,0],
+  [0,1,1,'B',1,1,1,'B',1,0],
+  [0,0,1,1,1,1,1,1,1,0],
+  [0,0,2,2,2,2,2,2,2,0],
+  [0,0,2,9,2,'C',2,9,2,0],
+  [0,0,2,2,2,2,2,2,2,0],
+  [0,0,3,2,2,2,2,2,3,0],
+  [0,0,4,4,4,4,4,4,4,0],
+  [0,0,5,4,4,4,4,4,5,0],
+  [0,0,5,4,4,4,4,4,5,0],
+  [0,0,6,6,6,6,6,6,6,0],
+  [0,0,7,6,6,6,6,6,7,0],
+  [0,0,'A','A',0,0,'A','A',0,0],
+  [0,'A','A','A',0,0,'A','A','A',0],
+];
+
+function drawSprite(sprite, x, y, pixelSize) {
+  for (let row = 0; row < sprite.length; row++) {
+    for (let col = 0; col < sprite[row].length; col++) {
+      const p = sprite[row][col];
+      if (!p) continue;
+      const color = PAL[p];
+      if (!color) continue;
+      ctx.fillStyle = color;
+      ctx.fillRect(
+        Math.floor(x + col * pixelSize),
+        Math.floor(y + row * pixelSize),
+        pixelSize, pixelSize
+      );
+    }
+  }
+}
+
+// Cloud shape: simple pixel pattern
+function drawCloud(x, y) {
+  ctx.fillStyle = 'rgba(255,255,255,0.85)';
+  // small fluffy cloud from rectangles
+  ctx.fillRect(x+4, y+4, 12, 8);
+  ctx.fillRect(x,   y+6, 20, 6);
+  ctx.fillRect(x+2, y+2, 8,  4);
+  ctx.fillRect(x+10,y+1, 6,  4);
+}
+
+// ─── GAME STATE ───────────────────────────────────────────────────────────────
+const PHASE = { WAITING: 0, PLAYING: 1, DEAD: 2 };
+
+let state;
+
+function resetState() {
+  state = {
+    phase:  PHASE.WAITING,
+    score:  0,
+    best:   state ? state.best : 0,
+    frame:  0,
+    fartFrame: 0,   // frames since last fart (for tilt sprite)
+    player: {
+      x:  PLAYER_X,
+      y:  LOGICAL_H / 2 - PLAYER_H / 2,
+      vy: 0,
+    },
+    pipes: [],
+    clouds: [
+      { x: 40,  y: 60,  speed: 0.3 },
+      { x: 140, y: 40,  speed: 0.2 },
+      { x: 240, y: 80,  speed: 0.35 },
+      { x: 300, y: 30,  speed: 0.25 },
+    ],
+    flashFrames: 0,
+    deathAngle: 0,
+    deathY: 0,
+  };
+}
+resetState();
+
+// ─── PIPES ───────────────────────────────────────────────────────────────────
+function spawnPipe() {
+  const minGapTop = 50;
+  const maxGapTop = LOGICAL_H - GROUND_H - PIPE_GAP - 50;
+  const gapTop = minGapTop + Math.floor(Math.random() * (maxGapTop - minGapTop));
+  state.pipes.push({ x: LOGICAL_W + 4, gapTop, scored: false });
+}
+
+// ─── COLLISION ───────────────────────────────────────────────────────────────
+function rectsOverlap(ax, ay, aw, ah, bx, by, bw, bh) {
+  return ax < bx + bw && ax + aw > bx &&
+         ay < by + bh && ay + ah > by;
+}
+
+function checkCollision() {
+  const { x, y } = state.player;
+  const hx = x  + HIT_SHRINK;
+  const hy = y  + HIT_SHRINK;
+  const hw = PLAYER_W - HIT_SHRINK * 2;
+  const hh = PLAYER_H - HIT_SHRINK * 2;
+
+  // Ground
+  if (y + PLAYER_H >= LOGICAL_H - GROUND_H) return true;
+  // Ceiling
+  if (y <= 0) return true;
+
+  for (const p of state.pipes) {
+    // top pipe: from 0 to gapTop
+    if (rectsOverlap(hx, hy, hw, hh, p.x, 0, PIPE_W, p.gapTop)) return true;
+    // bottom pipe: from gapTop+PIPE_GAP to bottom
+    const botY = p.gapTop + PIPE_GAP;
+    if (rectsOverlap(hx, hy, hw, hh, p.x, botY, PIPE_W, LOGICAL_H - GROUND_H - botY)) return true;
+  }
+  return false;
+}
+
+// ─── INPUT ───────────────────────────────────────────────────────────────────
+function onTap() {
+  if (state.phase === PHASE.WAITING) {
+    state.phase = PHASE.PLAYING;
+    state.player.vy = THRUST;
+    state.fartFrame = 1;
+    return;
+  }
+  if (state.phase === PHASE.PLAYING) {
+    state.player.vy = THRUST;
+    state.fartFrame = 12;
+    return;
+  }
+  if (state.phase === PHASE.DEAD) {
+    resetState();
+  }
+}
+
+canvas.addEventListener('click',      onTap);
+canvas.addEventListener('touchstart', e => { e.preventDefault(); onTap(); }, { passive: false });
+document.addEventListener('keydown',  e => { if (e.code === 'Space' || e.code === 'ArrowUp') { e.preventDefault(); onTap(); } });
+
+// ─── UPDATE ──────────────────────────────────────────────────────────────────
+function update() {
+  if (state.phase !== PHASE.PLAYING) {
+    // scroll clouds even on wait/dead screens
+    for (const c of state.clouds) {
+      c.x -= c.speed;
+      if (c.x < -24) c.x = LOGICAL_W + 4;
+    }
+    if (state.phase === PHASE.DEAD) {
+      state.deathY  += 4;
+      state.deathAngle += 0.18;
+      if (state.flashFrames > 0) state.flashFrames--;
+    }
+    return;
+  }
+
+  state.frame++;
+  if (state.fartFrame > 0) state.fartFrame--;
+
+  // Physics
+  state.player.vy += GRAVITY;
+  state.player.y  += state.player.vy;
+
+  // Clouds
+  for (const c of state.clouds) {
+    c.x -= c.speed;
+    if (c.x < -24) c.x = LOGICAL_W + 4;
+  }
+
+  // Pipe spawning
+  if (state.frame % PIPE_INTERVAL === 0) spawnPipe();
+
+  // Pipe movement + scoring
+  const speed = PIPE_SPEED + Math.floor(state.score / 5) * 0.15;
+  for (const p of state.pipes) {
+    p.x -= speed;
+    if (!p.scored && p.x + PIPE_W < state.player.x) {
+      p.scored = true;
+      state.score++;
+    }
+  }
+  state.pipes = state.pipes.filter(p => p.x + PIPE_W > -4);
+
+  // Collision
+  if (checkCollision()) {
+    state.phase      = PHASE.DEAD;
+    state.deathY     = state.player.y;
+    state.deathAngle = 0;
+    state.flashFrames = 8;
+    if (state.score > state.best) state.best = state.score;
+  }
+}
+
+// ─── RENDER ──────────────────────────────────────────────────────────────────
+function drawPipe(pipe) {
+  const capH = 10;
+  const capW = PIPE_W + 6;
+
+  // Top pipe
+  ctx.fillStyle = '#2ECC40';
+  ctx.fillRect(pipe.x, 0, PIPE_W, pipe.gapTop - capH);
+  ctx.fillStyle = '#27AE60';
+  ctx.fillRect(pipe.x + 2, 0, 4, pipe.gapTop - capH); // shadow stripe
+  // top pipe cap
+  ctx.fillStyle = '#2ECC40';
+  ctx.fillRect(pipe.x - 3, pipe.gapTop - capH, capW, capH);
+  ctx.fillStyle = '#27AE60';
+  ctx.fillRect(pipe.x - 1, pipe.gapTop - capH, 4, capH);
+
+  // Bottom pipe
+  const botY = pipe.gapTop + PIPE_GAP;
+  // cap first
+  ctx.fillStyle = '#2ECC40';
+  ctx.fillRect(pipe.x - 3, botY, capW, capH);
+  ctx.fillStyle = '#27AE60';
+  ctx.fillRect(pipe.x - 1, botY, 4, capH);
+  // shaft
+  ctx.fillStyle = '#2ECC40';
+  ctx.fillRect(pipe.x, botY + capH, PIPE_W, LOGICAL_H - GROUND_H - botY - capH);
+  ctx.fillStyle = '#27AE60';
+  ctx.fillRect(pipe.x + 2, botY + capH, 4, LOGICAL_H - GROUND_H - botY - capH);
+}
+
+function drawFartCloud(x, y) {
+  // simple pixel puffs behind the character
+  ctx.globalAlpha = 0.6;
+  const puffs = [
+    { dx: -8,  dy: 4,  r: 5 },
+    { dx: -14, dy: 2,  r: 4 },
+    { dx: -11, dy: 8,  r: 3 },
+    { dx: -18, dy: 6,  r: 3 },
+  ];
+  for (const puff of puffs) {
+    ctx.fillStyle = `hsl(${70 + puff.r * 5}, 70%, 80%)`;
+    ctx.beginPath();
+    ctx.arc(x + puff.dx, y + PLAYER_H / 2 + puff.dy, puff.r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+
+function render() {
+  // Sky gradient
+  const grad = ctx.createLinearGradient(0, 0, 0, LOGICAL_H);
+  grad.addColorStop(0,   '#87CEEB');
+  grad.addColorStop(1,   '#C9ECFF');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, LOGICAL_W, LOGICAL_H);
+
+  // Flash on death
+  if (state.flashFrames > 0) {
+    ctx.fillStyle = 'rgba(255,100,100,0.35)';
+    ctx.fillRect(0, 0, LOGICAL_W, LOGICAL_H);
+  }
+
+  // Clouds
+  for (const c of state.clouds) drawCloud(c.x, c.y);
+
+  // Pipes
+  for (const p of state.pipes) drawPipe(p);
+
+  // Ground
+  ctx.fillStyle = '#5DBB63';
+  ctx.fillRect(0, LOGICAL_H - GROUND_H, LOGICAL_W, 8);
+  ctx.fillStyle = '#8B5E3C';
+  ctx.fillRect(0, LOGICAL_H - GROUND_H + 8, LOGICAL_W, GROUND_H - 8);
+  // grass texture stripes
+  ctx.fillStyle = '#4CAF50';
+  for (let gx = 0; gx < LOGICAL_W; gx += 16) {
+    ctx.fillRect(gx, LOGICAL_H - GROUND_H, 8, 4);
+  }
+
+  // Player
+  const px = state.player.x;
+  const py = state.player.y;
+
+  if (state.phase === PHASE.DEAD) {
+    // spin off screen
+    ctx.save();
+    ctx.translate(px + PLAYER_W / 2, state.deathY + PLAYER_H / 2);
+    ctx.rotate(state.deathAngle);
+    drawSprite(GIRL, -PLAYER_W / 2, -PLAYER_H / 2, 2);
+    ctx.restore();
+  } else {
+    if (state.fartFrame > 0) {
+      drawFartCloud(px, py);
+      drawSprite(GIRL_TILTED, px, py, 2);
+    } else {
+      // gentle bob on waiting screen
+      const bobY = state.phase === PHASE.WAITING
+        ? Math.sin(Date.now() / 400) * 3
+        : 0;
+      drawSprite(GIRL, px, py + bobY, 2);
+    }
+  }
+
+  // Score
+  if (state.phase === PHASE.PLAYING || state.phase === PHASE.DEAD) {
+    ctx.fillStyle = '#FFFFFF';
+    ctx.strokeStyle = '#333';
+    ctx.lineWidth = 3;
+    ctx.font = 'bold 22px monospace';
+    ctx.textAlign = 'center';
+    ctx.strokeText(state.score, LOGICAL_W / 2, 38);
+    ctx.fillText(state.score, LOGICAL_W / 2, 38);
+  }
+
+  // Waiting screen overlay
+  if (state.phase === PHASE.WAITING) {
+    ctx.fillStyle = 'rgba(0,0,0,0.25)';
+    ctx.fillRect(0, 0, LOGICAL_W, LOGICAL_H);
+
+    ctx.fillStyle = '#FFFFFF';
+    ctx.strokeStyle = '#333';
+    ctx.lineWidth = 3;
+    ctx.textAlign = 'center';
+
+    ctx.font = 'bold 28px monospace';
+    ctx.strokeText('FART FLYER', LOGICAL_W / 2, 130);
+    ctx.fillStyle = '#FFD700';
+    ctx.fillText('FART FLYER', LOGICAL_W / 2, 130);
+
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = '14px monospace';
+    ctx.strokeText('Tap / Space to fly!', LOGICAL_W / 2, 162);
+    ctx.fillText('Tap / Space to fly!', LOGICAL_W / 2, 162);
+
+    // bouncing arrow
+    const bounce = Math.sin(Date.now() / 300) * 4;
+    ctx.font = '20px monospace';
+    ctx.fillText('▼', LOGICAL_W / 2, 220 + bounce);
+  }
+
+  // Game over overlay
+  if (state.phase === PHASE.DEAD) {
+    ctx.fillStyle = 'rgba(0,0,0,0.45)';
+    ctx.fillRect(LOGICAL_W / 2 - 90, LOGICAL_H / 2 - 64, 180, 128);
+
+    ctx.strokeStyle = '#333';
+    ctx.lineWidth = 3;
+    ctx.textAlign = 'center';
+
+    ctx.font = 'bold 24px monospace';
+    ctx.fillStyle = '#FF6B6B';
+    ctx.strokeText('GAME OVER', LOGICAL_W / 2, LOGICAL_H / 2 - 28);
+    ctx.fillText('GAME OVER',  LOGICAL_W / 2, LOGICAL_H / 2 - 28);
+
+    ctx.font = '14px monospace';
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillText(`Score: ${state.score}`, LOGICAL_W / 2, LOGICAL_H / 2 + 2);
+    ctx.fillText(`Best:  ${state.best}`,  LOGICAL_W / 2, LOGICAL_H / 2 + 22);
+
+    ctx.font = '13px monospace';
+    ctx.fillStyle = '#FFD700';
+    const pulse = 0.6 + 0.4 * Math.sin(Date.now() / 250);
+    ctx.globalAlpha = pulse;
+    ctx.fillText('Tap to play again', LOGICAL_W / 2, LOGICAL_H / 2 + 50);
+    ctx.globalAlpha = 1;
+  }
+}
+
+// ─── LOOP ────────────────────────────────────────────────────────────────────
+function loop() {
+  update();
+  render();
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
