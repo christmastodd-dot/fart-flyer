@@ -15,7 +15,6 @@ const SFX = {
   // Called by game.js on the very first touch event, before any game logic.
   unlock() {
     if (this._ctx) {
-      // Recover from a suspension (phone lock, app-switch, etc.)
       if (this._ctx.state !== 'running') this._ctx.resume();
       return;
     }
@@ -23,31 +22,26 @@ const SFX = {
     if (!AC) return;
     try { this._ctx = new AC(); } catch (e) { return; }
 
-    // resume() must be called synchronously here, inside the gesture handler.
+    // Must be synchronous inside the gesture handler.
     this._ctx.resume();
 
-    // Play a zero-gain oscillator for 1 ms — this "warms up" the audio
-    // pipeline on iOS so subsequent calls work immediately.
-    const g = this._ctx.createGain();
-    g.gain.value = 0;
-    g.connect(this._ctx.destination);
-    const o = this._ctx.createOscillator();
-    o.connect(g);
-    o.start(0);
-    o.stop(this._ctx.currentTime + 0.001);
+    // Play a 1-sample silence buffer — standard iOS unlock pattern.
+    const buf = this._ctx.createBuffer(1, 1, 22050);
+    const src = this._ctx.createBufferSource();
+    src.buffer = buf;
+    src.connect(this._ctx.destination);
+    src.start(0);
   },
 
   // Kept for backwards-compat with onTap calls in game.js.
   init() { this.unlock(); },
 
-  // Execute fn() as soon as the context is running.
+  // Schedule fn() immediately — nodes queue and play once context is running.
+  // Async .then() falls outside iOS user-gesture scope; always call fn() sync.
   _play(fn) {
     if (!this._ctx) return;
-    if (this._ctx.state === 'running') {
-      fn();
-    } else {
-      this._ctx.resume().then(fn).catch(() => {});
-    }
+    if (this._ctx.state !== 'running') this._ctx.resume().catch(() => {});
+    fn();
   },
 
   fart() {

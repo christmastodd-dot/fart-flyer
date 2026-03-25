@@ -15,7 +15,6 @@ const SFX = {
   // Called by game.js on the very first touch event, before any game logic.
   unlock() {
     if (this._ctx) {
-      // Recover from a suspension (phone lock, app-switch, etc.)
       if (this._ctx.state !== 'running') this._ctx.resume();
       return;
     }
@@ -23,31 +22,29 @@ const SFX = {
     if (!AC) return;
     try { this._ctx = new AC(); } catch (e) { return; }
 
-    // resume() must be called synchronously here, inside the gesture handler.
+    // Must be synchronous inside the gesture handler.
     this._ctx.resume();
 
-    // Play a zero-gain oscillator for 1 ms — this "warms up" the audio
-    // pipeline on iOS so subsequent calls work immediately.
-    const g = this._ctx.createGain();
-    g.gain.value = 0;
-    g.connect(this._ctx.destination);
-    const o = this._ctx.createOscillator();
-    o.connect(g);
-    o.start(0);
-    o.stop(this._ctx.currentTime + 0.001);
+    // Play a 1-sample silence buffer — this is the standard unlock pattern
+    // used by Howler.js / Tone.js and is more compatible than an oscillator
+    // on older iOS Safari versions.
+    const buf = this._ctx.createBuffer(1, 1, 22050);
+    const src = this._ctx.createBufferSource();
+    src.buffer = buf;
+    src.connect(this._ctx.destination);
+    src.start(0);
   },
 
   // Kept for backwards-compat with onTap calls in game.js.
   init() { this.unlock(); },
 
-  // Execute fn() as soon as the context is running.
+  // Schedule fn() immediately — audio nodes created synchronously can queue
+  // and will play as soon as the context is running. On iOS, async .then()
+  // callbacks fall outside the user-gesture scope and may be blocked.
   _play(fn) {
     if (!this._ctx) return;
-    if (this._ctx.state === 'running') {
-      fn();
-    } else {
-      this._ctx.resume().then(fn).catch(() => {});
-    }
+    if (this._ctx.state !== 'running') this._ctx.resume().catch(() => {});
+    fn();
   },
 
   fart() {
