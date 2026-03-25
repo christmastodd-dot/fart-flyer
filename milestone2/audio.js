@@ -4,39 +4,44 @@ const SFX = {
   _ctx: null,
 
   init() {
-    if (this._ctx) {
-      // iOS suspends the context between taps — always try to resume
-      if (this._ctx.state === 'suspended') this._ctx.resume();
-      return;
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+
+    if (!this._ctx) {
+      try { this._ctx = new AC(); } catch (e) { return; }
+      // Kick a silent 1-sample buffer synchronously — iOS needs an audio node
+      // started inside the gesture handler to fully activate the pipeline.
+      const b = this._ctx.createBuffer(1, 1, this._ctx.sampleRate);
+      const s = this._ctx.createBufferSource();
+      s.buffer = b;
+      s.connect(this._ctx.destination);
+      s.start(0);
     }
-    try {
-      this._ctx = new (window.AudioContext || window.webkitAudioContext)();
-    } catch (e) {
-      console.warn('Web Audio API not available');
-      return;
-    }
-    // iOS requires resume() AND a silent buffer played synchronously inside
-    // the user-gesture handler to fully unlock the audio pipeline.
-    this._ctx.resume();
-    const buf = this._ctx.createBuffer(1, 1, 22050);
-    const src = this._ctx.createBufferSource();
-    src.buffer = buf;
-    src.connect(this._ctx.destination);
-    src.start(0);
+
+    // resume() is always async; call it on every gesture so the context
+    // recovers after phone lock / app-switch suspensions.
+    if (this._ctx.state !== 'running') this._ctx.resume();
   },
 
-  _resume() {
-    if (this._ctx && this._ctx.state === 'suspended') this._ctx.resume();
+  // Run fn() as soon as the context is confirmed running.
+  // If already running: immediate. If suspended/interrupted: after resume resolves.
+  _play(fn) {
+    if (!this._ctx) return;
+    if (this._ctx.state === 'running') {
+      fn();
+    } else {
+      this._ctx.resume().then(fn).catch(() => {});
+    }
   },
 
   // Randomly pick one of three fart variations each tap
   fart() {
-    if (!this._ctx) return;
-    this._resume();
-    const pick = Math.floor(Math.random() * 3);
-    if      (pick === 0) this._fart1();
-    else if (pick === 1) this._fart2();
-    else                 this._fart3();
+    this._play(() => {
+      const pick = Math.floor(Math.random() * 3);
+      if      (pick === 0) this._fart1();
+      else if (pick === 1) this._fart2();
+      else                 this._fart3();
+    });
   },
 
   // ── Variation 1: mid-pitch sawtooth + brown noise (the classic) ────────────
@@ -99,7 +104,7 @@ const SFX = {
     const osc  = ac.createOscillator();
     osc.type = 'square';
     osc.frequency.setValueAtTime(hz, t);
-    osc.frequency.exponentialRampToValueAtTime(hz * 1.3, t + dur * 0.2); // tiny squeak-rise
+    osc.frequency.exponentialRampToValueAtTime(hz * 1.3, t + dur * 0.2);
     osc.frequency.exponentialRampToValueAtTime(hz * 0.5, t + dur);
 
     const bpf = ac.createBiquadFilter();
@@ -145,7 +150,7 @@ const SFX = {
     let last = 0;
     for (let i = 0; i < bufLen; i++) {
       const w = Math.random() * 2 - 1;
-      last    = (last + 0.02 * w) / 1.02;   // very brown noise (low freq)
+      last    = (last + 0.02 * w) / 1.02;
       d[i]    = last * 3;
     }
     const nSrc  = ac.createBufferSource();
@@ -174,60 +179,60 @@ const SFX = {
 
   // Score ping: rising sine tone
   ping() {
-    if (!this._ctx) return;
-    this._resume();
-    const ac   = this._ctx;
-    const t    = ac.currentTime;
-    const osc  = ac.createOscillator();
-    const gain = ac.createGain();
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(880, t);
-    osc.frequency.exponentialRampToValueAtTime(1320, t + 0.12);
-    gain.gain.setValueAtTime(0.22, t);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
-    osc.connect(gain);
-    gain.connect(ac.destination);
-    osc.start(t);
-    osc.stop(t + 0.18);
+    this._play(() => {
+      const ac   = this._ctx;
+      const t    = ac.currentTime;
+      const osc  = ac.createOscillator();
+      const gain = ac.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(880, t);
+      osc.frequency.exponentialRampToValueAtTime(1320, t + 0.12);
+      gain.gain.setValueAtTime(0.22, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
+      osc.connect(gain);
+      gain.connect(ac.destination);
+      osc.start(t);
+      osc.stop(t + 0.18);
+    });
   },
 
   // Power-up collect: cheerful ascending arpeggio (C5 E5 G5 C6)
   powerup() {
-    if (!this._ctx) return;
-    this._resume();
-    const ac    = this._ctx;
-    const notes = [523, 659, 784, 1047];
-    notes.forEach((hz, i) => {
-      const t    = ac.currentTime + i * 0.075;
-      const osc  = ac.createOscillator();
-      const gain = ac.createGain();
-      osc.type = 'sine';
-      osc.frequency.value = hz;
-      gain.gain.setValueAtTime(0.2, t);
-      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.14);
-      osc.connect(gain);
-      gain.connect(ac.destination);
-      osc.start(t);
-      osc.stop(t + 0.14);
+    this._play(() => {
+      const ac    = this._ctx;
+      const notes = [523, 659, 784, 1047];
+      notes.forEach((hz, i) => {
+        const t    = ac.currentTime + i * 0.075;
+        const osc  = ac.createOscillator();
+        const gain = ac.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = hz;
+        gain.gain.setValueAtTime(0.2, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.14);
+        osc.connect(gain);
+        gain.connect(ac.destination);
+        osc.start(t);
+        osc.stop(t + 0.14);
+      });
     });
   },
 
   // Death thud: descending sawtooth crash
   death() {
-    if (!this._ctx) return;
-    this._resume();
-    const ac   = this._ctx;
-    const t    = ac.currentTime;
-    const osc  = ac.createOscillator();
-    const gain = ac.createGain();
-    osc.type = 'sawtooth';
-    osc.frequency.setValueAtTime(220, t);
-    osc.frequency.exponentialRampToValueAtTime(38, t + 0.48);
-    gain.gain.setValueAtTime(0.5, t);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.48);
-    osc.connect(gain);
-    gain.connect(ac.destination);
-    osc.start(t);
-    osc.stop(t + 0.48);
+    this._play(() => {
+      const ac   = this._ctx;
+      const t    = ac.currentTime;
+      const osc  = ac.createOscillator();
+      const gain = ac.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(220, t);
+      osc.frequency.exponentialRampToValueAtTime(38, t + 0.48);
+      gain.gain.setValueAtTime(0.5, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.48);
+      osc.connect(gain);
+      gain.connect(ac.destination);
+      osc.start(t);
+      osc.stop(t + 0.48);
+    });
   },
 };
