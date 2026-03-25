@@ -229,7 +229,7 @@ function onTap(tapX, tapY) {
 
   if (state.phase === 'SELECT') {
     // Name edit zone (below hint text — checked before panelBottom so it takes priority)
-    if (tapY >= 215 && tapY <= 242) {
+    if (tapY >= 228 && tapY <= 258) {
       editName();
       return;
     }

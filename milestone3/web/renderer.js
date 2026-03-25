@@ -333,15 +333,15 @@ const Renderer = {
     ctx.fillStyle = 'rgba(255,255,255,0.40)';
     ctx.fillText('\u2190\u2192 or tap sides to browse  \u2022  tap center to play', cx, panelY + panelH + 44);
 
-    // Name field (tappable zone y 215-242)
-    const nameFieldY = panelY + panelH + 60;
-    ctx.fillStyle = 'rgba(0,0,0,0.35)';
-    ctx.fillRect(cx - 64, nameFieldY - 13, 128, 20);
-    ctx.strokeStyle = 'rgba(255,255,255,0.28)';
+    // Name field (tappable zone y 228-258)
+    const nameFieldY = panelY + panelH + 78;
+    ctx.fillStyle = 'rgba(0,0,0,0.40)';
+    ctx.fillRect(cx - 96, nameFieldY - 14, 192, 26);
+    ctx.strokeStyle = 'rgba(255,255,255,0.35)';
     ctx.lineWidth = 1;
-    ctx.strokeRect(cx - 64, nameFieldY - 13, 128, 20);
-    ctx.font      = '11px monospace';
-    ctx.fillStyle = playerName ? '#FFD700' : 'rgba(255,255,255,0.35)';
+    ctx.strokeRect(cx - 96, nameFieldY - 14, 192, 26);
+    ctx.font      = '12px monospace';
+    ctx.fillStyle = playerName ? '#FFD700' : 'rgba(255,255,255,0.40)';
     ctx.fillText(playerName ? '\u270f ' + playerName : '\u270f  tap to enter your name', cx, nameFieldY);
 
     if (state.best > 0) {
